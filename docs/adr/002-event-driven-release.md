@@ -1,5 +1,5 @@
-# ADR 002: event-driven release orchestration
+# ADR 002：事件驱动的发布编排
 
-Status: accepted
+状态：已采纳
 
-The API publishes a release request to EventBridge. EventBridge starts Step Functions, while Step Functions owns the multi-stage workflow. This separates event routing from long-running orchestration and makes the LocalStack resource graph inspectable.
+API 将发布请求发布到 EventBridge。EventBridge 启动 Step Functions，Step Functions 负责多阶段工作流。这样可以将事件路由与长时间运行的编排解耦，同时让 LocalStack 的资源关系图保持可检查。

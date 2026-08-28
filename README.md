@@ -1,42 +1,42 @@
 # canary-release-orchestrator
 
-学习型 Progressive Delivery control plane：用一个传统 Payment Processing API 演示 stable-v1 到 candidate-v2 的 deterministic canary release。项目只使用 Java/Spring Boot、AWS SDK、Terraform、Docker Compose 与 LocalStack；不会连接真实 AWS，也不使用 Bedrock、LLM 或 Kubernetes。
+这是一个用于学习的渐进式交付控制平面项目：通过传统的支付处理 API，演示从 `stable-v1` 到 `candidate-v2` 的确定性金丝雀发布。项目只使用 Java/Spring Boot、AWS SDK、Terraform、Docker Compose 和 LocalStack；不会连接真实 AWS，也不使用 Bedrock、LLM 或 Kubernetes。
 
-## Problem
+## 问题背景
 
-在不一次性切换全部流量的情况下，自动验证 Candidate 的错误率和延迟，并在健康时逐步扩大流量，在回归时自动回滚。
+在不一次性切换全部流量的情况下，自动验证 Candidate 的错误率和延迟：指标正常时逐步扩大流量，出现回归时自动回滚。
 
-## Architecture
+## 架构
 
-客户端请求进入 Spring Boot control plane。它从 DynamoDB 读取 1 秒缓存的 routing state，并按 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理结束后向 CloudWatch `CanaryDemo/PaymentAPI` 写入 RequestCount、ErrorCount、LatencyMs，并把同一条 evidence 写入 DynamoDB window，供 LocalStack CloudWatch 统计异常时的显式 deterministic fallback 使用。
+客户端请求进入 Spring Boot 控制平面。控制平面从 DynamoDB 读取路由状态，并使用 1 秒缓存；随后按照 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理请求结束后，控制平面向 CloudWatch `CanaryDemo/PaymentAPI` 写入 `RequestCount`、`ErrorCount` 和 `LatencyMs`，同时把同一条证据写入 DynamoDB 指标窗口，供 LocalStack 的 CloudWatch 统计异常时使用显式的确定性回退。
 
-Release API 写入 release state 后发布 EventBridge `CanaryReleaseRequested`。EventBridge rule 将事件 detail 交给 Standard Step Functions；workflow 调用 Python Lambda 设置权重、等待 metrics window、调用 health evaluation，再由 Choice 决定下一阶段或 rollback。
+发布 API 写入发布状态后，发布 EventBridge 事件 `CanaryReleaseRequested`。EventBridge 规则将事件的 `detail` 交给 Standard 类型的 Step Functions；工作流调用 Python Lambda 设置流量权重、等待指标窗口、执行健康评估，再由 Choice 决定进入下一阶段还是回滚。
 
-## Technology Stack
+## 技术栈
 
-- Java 21, Spring Boot 3.4, Maven multi-module
+- Java 21、Spring Boot 3.4、Maven 多模块项目
 - AWS SDK for Java v2：DynamoDB、CloudWatch、EventBridge
-- Python 3.11 Lambda handlers
-- Terraform AWS provider against `http://localhost:4566`
-- Docker Compose and LocalStack
-- JUnit 5; HTTP/infrastructure validation scripts
+- Python 3.11 Lambda 处理器
+- Terraform AWS Provider，连接 `http://localhost:4566`
+- Docker Compose 与 LocalStack
+- JUnit 5；HTTP 和基础设施校验脚本
 
-## Repository Structure
+## 仓库结构
 
 ```text
-apps/payment-service/          reusable stable/candidate Spring Boot artifact
-apps/canary-control-plane/     gateway, release API, dashboard, metrics, traffic
-lambda/                        initialize, set_weight, evaluate_health, finalize
-infra/                         Terraform resources and state machine definition
-scripts/                       Windows PowerShell and shell smoke/demo scripts
-docs/                          architecture, algorithm, failure scenarios, ADRs
-docker-compose.yml             optional three-application container topology
-Makefile                       reproducible local commands
+apps/payment-service/          可复用的 stable/candidate Spring Boot 应用
+apps/canary-control-plane/     网关、发布 API、仪表盘、指标和流量生成器
+lambda/                        initialize、set_weight、evaluate_health、finalize
+infra/                         Terraform 资源和状态机定义
+scripts/                       Windows PowerShell 与 Shell 冒烟/演示脚本
+docs/                          架构、算法、故障场景和 ADR
+docker-compose.yml             可选的三个应用容器拓扑
+Makefile                       可重复执行的本地命令
 ```
 
-## Quick Start
+## 快速开始
 
-Prerequisites: Java 21, Maven, Terraform, Docker Desktop and AWS CLI. All credentials are fake values:
+前置条件：Java 21、Maven、Terraform、Docker Desktop 和 AWS CLI。下面使用的凭据均为本地模拟值：
 
 ```powershell
 Invoke-RestMethod http://localhost:4566/_localstack/health | ConvertTo-Json
@@ -46,43 +46,43 @@ terraform -chdir=infra apply -auto-approve -var='localstack_endpoint=http://loca
 .\scripts\start-apps.ps1
 ```
 
-Or, with GNU Make available:
+如果已安装 GNU Make，也可以执行：
 
 ```text
 make up
 make smoke
 ```
 
-Open <http://localhost:8080>. The dashboard has traffic and release buttons. The stable service is on 8081 and candidate is on 8082. `docker-compose.yml` is an optional app-container topology that assumes the separately deployed LocalStack is already exposed on host port 4566; this project workflow does not start or stop a LocalStack container.
+打开 <http://localhost:8080>。仪表盘中提供流量和发布按钮。stable 服务运行在 8081 端口，candidate 服务运行在 8082 端口。`docker-compose.yml` 是可选的应用容器拓扑，前提是你已经将独立运行的 LocalStack 暴露在主机的 4566 端口；本项目不会启动或停止 LocalStack 容器。
 
-## How It Works
+## 工作原理
 
-The gateway uses the same session bucket for every request. `0%` and `100%` are explicit fast paths; intermediate percentages use the deterministic bucket. The current release thresholds are configurable environment variables: minimum 10 candidate requests, error rate at most 5%, and average latency at most 300 ms.
+网关对同一个会话的每次请求都使用同一个哈希桶。`0%` 和 `100%` 是明确的快速路径；中间比例使用确定性哈希桶。当前发布阈值通过环境变量配置：candidate 至少收到 10 个请求，错误率不超过 5%，平均延迟不超过 300 ms。
 
-The candidate fault mode is changed only through the demo internal endpoint: `PUT /internal/fault-mode/HEALTHY`, `SLOW`, or `ERROR`. ERROR returns HTTP 500 on every third candidate request; SLOW adds 700 ms. Stable is always healthy.
+candidate 的故障模式只能通过演示用内部接口修改：`PUT /internal/fault-mode/HEALTHY`、`SLOW` 或 `ERROR`。`ERROR` 模式下 candidate 每 3 个请求返回一次 HTTP 500；`SLOW` 模式额外增加 700 ms 延迟。Stable 始终保持健康。
 
-Promotion is metric-driven: `Wait -> Evaluate -> Choice`. A wait by itself never promotes a release.
+晋级由指标驱动：`Wait -> Evaluate -> Choice`。单纯等待不会使发布晋级。
 
-## Healthy Demo
+## 健康发布演示
 
 ```powershell
 .\scripts\demo.ps1 -Scenario HEALTHY
-# or: make demo-healthy
+# 或：make demo-healthy
 ```
 
-The script starts bounded demo traffic, starts the release through the public API, polls the release record, and expects `PROMOTED` with candidate traffic `100%`.
+脚本会启动有上限的演示流量，通过公共 API 发起发布，轮询发布记录，并期望最终状态为 `PROMOTED`、candidate 流量为 `100%`。
 
-## Rollback Demo
+## 回滚演示
 
 ```powershell
 .\scripts\demo.ps1 -Scenario ERROR
 .\scripts\demo.ps1 -Scenario SLOW
-# or: make demo-error / make demo-slow
+# 或：make demo-error / make demo-slow
 ```
 
-ERROR is expected to end as `ROLLED_BACK` with `ERROR_RATE_THRESHOLD_EXCEEDED`. SLOW is expected to end as `ROLLED_BACK` with `LATENCY_THRESHOLD_EXCEEDED`. Both end at candidate traffic `0%`.
+`ERROR` 场景预期以 `ROLLED_BACK` 结束，原因是 `ERROR_RATE_THRESHOLD_EXCEEDED`。`SLOW` 场景预期以 `ROLLED_BACK` 结束，原因是 `LATENCY_THRESHOLD_EXCEEDED`。两种场景最终都会将 candidate 流量降至 `0%`。
 
-## Testing
+## 测试
 
 ```text
 ./mvnw test
@@ -92,37 +92,37 @@ docker compose config
 make smoke
 ```
 
-The Java tests cover deterministic fault injection and stable safety. The smoke script proves the LocalStack resources, service health, and a real `PutMetricData -> GetMetricStatistics` round trip. Demo scripts prove the event-driven end-to-end path when Docker is available.
+Java 测试覆盖确定性故障注入和 stable 安全性。冒烟脚本会验证 LocalStack 资源、服务健康状态，以及真实的 `PutMetricData -> GetMetricStatistics` 往返调用。Docker 可用时，演示脚本还会验证事件驱动的端到端流程。
 
-## Why EventBridge
+## 为什么选择 EventBridge
 
-EventBridge is the release-domain event boundary. It receives `CanaryReleaseRequested` and starts the workflow; it does not own waits, branching, or release state.
+EventBridge 是发布域的事件边界。它接收 `CanaryReleaseRequested` 并启动工作流，但不负责等待、分支判断或发布状态管理。
 
-## Why Step Functions
+## 为什么选择 Step Functions
 
-Step Functions owns the long-running orchestration: wait windows, Lambda activities, Choice decisions, retry behavior, promotion and rollback.
+Step Functions 负责长时间运行的编排，包括等待窗口、Lambda 活动、Choice 决策、重试、晋级和回滚。
 
-## Why Lambda
+## 为什么使用 Lambda
 
-Each Lambda is a small deterministic activity with a narrow contract: claim a release, set a weight, evaluate health evidence, or finalize a decision.
+每个 Lambda 都是一个职责单一、契约明确的确定性活动，分别负责抢占发布、设置权重、评估健康证据或完成最终决策。
 
-## Why CloudWatch
+## 为什么选择 CloudWatch
 
-CloudWatch is the primary release-health evidence source. Every proxied request emits the three custom metrics with a `Version` dimension. The evaluator uses `GetMetricStatistics`.
+CloudWatch 是发布健康度的主要证据来源。每个代理请求都会带有 `Version` 维度，并写入三个自定义指标。评估器使用 `GetMetricStatistics` 查询这些指标。
 
-## Why deterministic routing
+## 为什么采用确定性路由
 
-Hashing a session ID avoids request-to-request flapping and makes a test or demo explainable. A large set of distinct sessions converges approximately on the configured percentage.
+对会话 ID 做哈希可以避免请求之间来回切换，也让测试和演示结果更容易解释。使用足够多的不同会话时，实际分布会近似收敛到配置的流量比例。
 
-## LocalStack limitations
+## LocalStack 限制
 
-The application always calls the LocalStack endpoint and never falls through to real AWS. LocalStack versions can differ in CloudWatch statistic aggregation, Lambda Docker execution, or IAM enforcement. The primary path remains CloudWatch `PutMetricData` and the evaluator first calls `GetMetricStatistics`; if that call errors or returns no request datapoints, it emits a `cloudwatch_evaluation_fallback` log and reads the exact request evidence from `canary-metrics-window`. This behavior is explicit and documented in [docs/localstack-limitations.md](docs/localstack-limitations.md), not a silent CloudWatch bypass.
+应用始终调用 LocalStack 端点，不会回退到真实 AWS。不同版本的 LocalStack 在 CloudWatch 统计聚合、Lambda Docker 执行或 IAM 强制执行方面可能存在差异。主路径仍然是 CloudWatch 的 `PutMetricData`，评估器首先调用 `GetMetricStatistics`；如果调用出错或没有返回 `RequestCount` 数据点，评估器会输出 `cloudwatch_evaluation_fallback` 日志，并从 `canary-metrics-window` 读取精确的请求证据。这种行为是显式的，并已记录在 [docs/localstack-limitations.md](docs/localstack-limitations.md) 中，不是静默绕过 CloudWatch。
 
-## Reset and cleanup
+## 重置与清理
 
 ```text
-make reset       # resets routing state through the control plane
-make down        # stops the native Spring Boot demo processes
+make reset       # 通过控制平面重置路由状态
+make down        # 停止本机运行的 Spring Boot 演示进程
 ```
 
-The local workflow does not automatically commit or push changes. LocalStack is expected to be provided separately at `http://localhost:4566`; the project does not create or manage a LocalStack container.
+本地工作流不会自动提交或推送代码。LocalStack 需要由外部环境单独提供，并监听 `http://localhost:4566`；本项目不会创建或管理 LocalStack 容器。

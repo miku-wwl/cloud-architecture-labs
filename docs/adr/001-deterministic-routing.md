@@ -1,5 +1,5 @@
-# ADR 001: deterministic session routing
+# ADR 001：确定性会话路由
 
-Status: accepted
+状态：已采纳
 
-Use SHA-256 of `X-Session-Id` modulo 100 for routing. This avoids request-to-request flapping, preserves session affinity for a percentage, and makes approximate distribution tests reproducible. Requests without a header receive a unique anonymous ID because they have no session affinity contract.
+使用 `X-Session-Id` 的 SHA-256 哈希值对 100 取模来进行路由。这样可以避免请求之间来回抖动，在指定流量比例下保持会话亲和性，并使近似分布测试能够复现。没有携带该请求头的请求会获得唯一的匿名 ID，因为这类请求没有会话亲和性契约。

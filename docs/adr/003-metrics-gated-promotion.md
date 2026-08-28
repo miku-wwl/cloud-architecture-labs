@@ -1,5 +1,5 @@
-# ADR 003: metrics-gated promotion
+# ADR 003：由指标门控的发布晋级
 
-Status: accepted
+状态：已采纳
 
-Promotion requires a minimum sample and threshold checks for error rate and average latency. A timer only opens the observation window; health evaluation and a Step Functions Choice make the decision. CloudWatch is the primary evidence source, with an explicit DynamoDB mirror fallback for emulator metric-statistic limitations.
+发布晋级必须满足最小样本量，并通过错误率和平均延迟阈值检查。计时器只负责打开观测窗口；真正的决策由健康评估和 Step Functions 的 Choice 完成。CloudWatch 是主要证据来源；当模拟器的指标统计存在限制时，显式回退到 DynamoDB 证据镜像。

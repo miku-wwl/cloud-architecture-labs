@@ -1,4 +1,4 @@
-package com.example.payment;
+package com.example.library;
 
 public enum FaultMode {
     HEALTHY,

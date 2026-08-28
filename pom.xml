@@ -18,7 +18,7 @@
     <name>canary-release-orchestrator</name>
 
     <modules>
-        <module>apps/payment-service</module>
+        <module>apps/library-service</module>
         <module>apps/canary-control-plane</module>
     </modules>
 

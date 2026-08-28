@@ -21,7 +21,7 @@ def handler(event, context):
     release_id = event["releaseId"]
     percentage = int(event["percentage"])
     stage = event["stage"]
-    service = event.get("serviceName", os.getenv("SERVICE_NAME", "payment-api"))
+    service = event.get("serviceName", os.getenv("SERVICE_NAME", "library-api"))
     stable = event.get("stableVersion", os.getenv("STABLE_VERSION", "stable-v1"))
     candidate = event.get("candidateVersion", os.getenv("CANDIDATE_VERSION", "candidate-v2"))
     now = datetime.now(timezone.utc)

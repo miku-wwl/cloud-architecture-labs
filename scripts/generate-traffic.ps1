@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'SilentlyContinue'
 if ($Rps -lt 1 -or $WorkerCount -lt 1) { exit 1 }
 
-$base = 'http://localhost:8080/api/payments/authorize'
+$base = 'http://localhost:8080/api/books/borrow'
 $intervalMs = [Math]::Max(1, 1000.0 * $WorkerCount / $Rps)
 $next = [DateTime]::UtcNow
 $deadline = $next.AddSeconds($DurationSeconds)
@@ -17,7 +17,7 @@ $sequence = 0
 while ([DateTime]::UtcNow -lt $deadline) {
     $sequence++
     $session = "demo-session-$WorkerId-$($sequence % 200)"
-    $body = @{ orderId = "demo-order-$WorkerId-$sequence"; amount = 1.00 } | ConvertTo-Json -Compress
+    $body = @{ bookId = "book-$($sequence % 20)"; memberId = "member-$WorkerId" } | ConvertTo-Json -Compress
     try {
         Invoke-RestMethod -Method Post -Uri $base -Headers @{ 'X-Session-Id' = $session } `
             -ContentType 'application/json' -Body $body -TimeoutSec 5 | Out-Null

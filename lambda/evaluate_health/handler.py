@@ -16,7 +16,7 @@ def _client(name):
 def _stats(version, start, end):
     cloudwatch = _client("cloudwatch")
     request = {
-        "Namespace": os.getenv("CLOUDWATCH_NAMESPACE", "CanaryDemo/PaymentAPI"),
+        "Namespace": os.getenv("CLOUDWATCH_NAMESPACE", "CanaryDemo/LibraryAPI"),
         "Dimensions": [{"Name": "Version", "Value": version}],
         "StartTime": start,
         "EndTime": end,

@@ -23,7 +23,7 @@ def handler(event, context):
     status = "PROMOTED" if promoted else "ROLLED_BACK"
     percentage = 100 if promoted else 0
     now = datetime.now(timezone.utc).isoformat()
-    service = event.get("serviceName", os.getenv("SERVICE_NAME", "payment-api"))
+    service = event.get("serviceName", os.getenv("SERVICE_NAME", "library-api"))
     stable = event.get("stableVersion", os.getenv("STABLE_VERSION", "stable-v1"))
     candidate = event.get("candidateVersion", os.getenv("CANDIDATE_VERSION", "candidate-v2"))
     ddb = _client("dynamodb")

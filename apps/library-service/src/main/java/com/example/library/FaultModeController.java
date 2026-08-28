@@ -1,4 +1,4 @@
-package com.example.payment;
+package com.example.library;
 
 import java.util.Map;
 
@@ -12,25 +12,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/internal")
 public class FaultModeController {
-    private final PaymentService paymentService;
+    private final LibraryService libraryService;
 
-    public FaultModeController(PaymentService paymentService) {
-        this.paymentService = paymentService;
+    public FaultModeController(LibraryService libraryService) {
+        this.libraryService = libraryService;
     }
 
     @PutMapping("/fault-mode/{mode}")
     public Map<String, String> setFaultMode(@PathVariable String mode) {
-        FaultMode selected = paymentService.setFaultMode(FaultMode.parse(mode));
-        return Map.of("version", paymentService.version(), "faultMode", selected.name());
+        FaultMode selected = libraryService.setFaultMode(FaultMode.parse(mode));
+        return Map.of("version", libraryService.version(), "faultMode", selected.name());
     }
 
     @GetMapping("/fault-mode")
     public Map<String, String> getFaultMode() {
-        return Map.of("version", paymentService.version(), "faultMode", paymentService.faultMode().name());
+        return Map.of("version", libraryService.version(), "faultMode", libraryService.faultMode().name());
     }
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of("status", "UP", "version", paymentService.version()));
+        return ResponseEntity.ok(Map.of("status", "UP", "version", libraryService.version()));
     }
 }

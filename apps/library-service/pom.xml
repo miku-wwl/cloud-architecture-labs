@@ -9,8 +9,8 @@
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
-    <artifactId>payment-service</artifactId>
-    <name>payment-service</name>
+    <artifactId>library-service</artifactId>
+    <name>library-service</name>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

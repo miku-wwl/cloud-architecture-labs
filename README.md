@@ -1,6 +1,6 @@
 # canary-release-orchestrator
 
-这是一个用于学习的渐进式交付控制平面项目：通过传统的支付处理 API，演示从 `stable-v1` 到 `candidate-v2` 的确定性金丝雀发布。项目只使用 Java/Spring Boot、AWS SDK、Terraform、Docker Compose 和 LocalStack；不会连接真实 AWS，也不使用 Bedrock、LLM 或 Kubernetes。
+这是一个用于学习的渐进式交付控制平面项目：通过简单的图书借阅 API，演示从 `stable-v1` 到 `candidate-v2` 的确定性金丝雀发布。项目只使用 Java/Spring Boot、AWS SDK、Terraform、Docker Compose 和 LocalStack；不会连接真实 AWS，也不使用 Bedrock、LLM 或 Kubernetes。
 
 ## 问题背景
 
@@ -8,7 +8,7 @@
 
 ## 架构
 
-客户端请求进入 Spring Boot 控制平面。控制平面从 DynamoDB 读取路由状态，按照 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理请求结束后，控制平面向 CloudWatch `CanaryDemo/PaymentAPI` 写入 `RequestCount`、`ErrorCount` 和 `LatencyMs`。这里的 Spring Boot 只负责提供被测业务的薄入口，发布编排由 AWS 服务完成。
+客户端请求进入 Spring Boot 控制平面。控制平面从 DynamoDB 读取路由状态，按照 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理请求结束后，控制平面向 CloudWatch `CanaryDemo/LibraryAPI` 写入 `RequestCount`、`ErrorCount` 和 `LatencyMs`。这里的 Spring Boot 只负责提供被测业务的薄入口，发布编排由 AWS 服务完成。
 
 发布 API 写入发布状态后，发布 EventBridge 事件 `CanaryReleaseRequested`。EventBridge 规则将事件的 `detail` 交给 Standard 类型的 Step Functions；工作流调用 Python Lambda 设置流量权重、等待指标窗口、执行健康评估，再由 Choice 决定进入下一阶段还是回滚。
 
@@ -24,7 +24,7 @@
 ## 仓库结构
 
 ```text
-apps/payment-service/          可复用的 stable/candidate Spring Boot 应用
+apps/library-service/          可复用的 stable/candidate Spring Boot 图书服务
 apps/canary-control-plane/     薄网关、发布 API 和 CloudWatch 指标上报
 lambda/                        set_weight、evaluate_health、finalize_release
 infra/                         Terraform 资源和状态机定义
@@ -53,13 +53,15 @@ make up
 make smoke
 ```
 
-控制平面运行在 8080 端口，stable 服务运行在 8081 端口，candidate 服务运行在 8082 端口。可以使用 `scripts/demo.ps1` 启动演示流量并发起发布。`docker-compose.yml` 只是可选的应用容器拓扑，前提是你已经将独立运行的 LocalStack 暴露在主机的 4566 端口；本项目不会启动或停止 LocalStack 容器。
+控制平面运行在 8080 端口，stable 图书服务运行在 8081 端口，candidate 图书服务运行在 8082 端口。可以使用 `scripts/demo.ps1` 启动演示流量并发起发布。`docker-compose.yml` 只是可选的应用容器拓扑，前提是你已经将独立运行的 LocalStack 暴露在主机的 4566 端口；本项目不会启动或停止 LocalStack 容器。
+
+图书业务只有一个核心操作：借阅图书。请求示例为 `POST /api/books/borrow`，请求体是 `{"bookId":"book-1","memberId":"member-1"}`。业务服务不连接数据库，借阅结果只用于观察版本路由和故障注入。
 
 ## 工作原理
 
-网关对同一个会话的每次请求都使用同一个哈希桶。`0%` 和 `100%` 是明确的快速路径；中间比例使用确定性哈希桶。当前发布阈值通过 Lambda 环境变量配置：candidate 至少收到 10 个请求，错误率不超过 5%，平均延迟不超过 300 ms。
+网关对同一个会话的每次请求都使用同一个哈希桶。`0%` 和 `100%` 是明确的快速路径；中间比例使用确定性哈希桶。当前发布阈值通过 Lambda 环境变量配置：candidate 至少收到 10 个借阅请求，错误率不超过 5%，平均延迟不超过 300 ms。
 
-candidate 的故障模式只能通过演示用内部接口修改：`PUT /internal/fault-mode/HEALTHY`、`SLOW` 或 `ERROR`。`ERROR` 模式下 candidate 每 3 个请求返回一次 HTTP 500；`SLOW` 模式额外增加 700 ms 延迟。Stable 始终保持健康。
+图书服务 candidate 的故障模式只能通过演示用内部接口修改：`PUT /internal/fault-mode/HEALTHY`、`SLOW` 或 `ERROR`。`ERROR` 模式下 candidate 每 3 个借阅请求返回一次 HTTP 500；`SLOW` 模式额外增加 700 ms 延迟。Stable 始终保持健康。
 
 晋级由指标驱动：`Wait -> Evaluate -> Choice`。单纯等待不会使发布晋级。
 

@@ -1,8 +1,8 @@
 services:
-  payment-stable:
+  library-stable:
     build:
       context: .
-      dockerfile: apps/payment-service/Dockerfile
+      dockerfile: apps/library-service/Dockerfile
     environment:
       SERVER_PORT: 8081
       APP_VERSION: stable-v1
@@ -12,10 +12,10 @@ services:
     networks:
       - canary-network
 
-  payment-candidate:
+  library-candidate:
     build:
       context: .
-      dockerfile: apps/payment-service/Dockerfile
+      dockerfile: apps/library-service/Dockerfile
     environment:
       SERVER_PORT: 8082
       APP_VERSION: candidate-v2
@@ -35,15 +35,15 @@ services:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
-      STABLE_URL: http://payment-stable:8081
-      CANDIDATE_URL: http://payment-candidate:8082
+      STABLE_URL: http://library-stable:8081
+      CANDIDATE_URL: http://library-candidate:8082
       EVALUATION_WINDOW_SECONDS: 10
     ports:
       - "8080:8080"
     depends_on:
-      payment-stable:
+      library-stable:
         condition: service_started
-      payment-candidate:
+      library-candidate:
         condition: service_started
     networks:
       - canary-network

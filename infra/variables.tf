@@ -27,7 +27,7 @@ variable "lambda_localstack_endpoint" {
 
 variable "service_name" {
   type    = string
-  default = "payment-api"
+  default = "library-api"
 }
 
 variable "stable_version" {

@@ -11,13 +11,13 @@ management:
       exposure:
         include: health,info
 app:
-  service-name: ${SERVICE_NAME:payment-api}
+  service-name: ${SERVICE_NAME:library-api}
   stable-version: ${STABLE_VERSION:stable-v1}
   candidate-version: ${CANDIDATE_VERSION:candidate-v2}
   routing-table: ${ROUTING_TABLE:canary-routing-state}
   release-table: ${RELEASE_TABLE:canary-releases}
   event-bus-name: ${EVENT_BUS_NAME:canary-release-bus}
-  cloudwatch-namespace: ${CLOUDWATCH_NAMESPACE:CanaryDemo/PaymentAPI}
+  cloudwatch-namespace: ${CLOUDWATCH_NAMESPACE:CanaryDemo/LibraryAPI}
   evaluation-window-seconds: ${EVALUATION_WINDOW_SECONDS:10}
   stable-url: ${STABLE_URL:http://localhost:8081}
   candidate-url: ${CANDIDATE_URL:http://localhost:8082}

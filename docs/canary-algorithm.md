@@ -1,6 +1,6 @@
 # 金丝雀发布算法
 
-1. 初始状态为 stable `100%`、candidate `0%`。
+1. 初始状态为 stable `100%`、candidate `0%`，图书借阅请求全部进入 stable。
 2. 将 candidate 调整为 `5%`，并记录该阶段的开始时间。
 3. 等待配置的证据采集窗口结束。
 4. 按 candidate 的 `Version` 维度查询 CloudWatch `GetMetricStatistics`。

@@ -33,10 +33,10 @@ if ((Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8080/actuator/hea
 }
 $now = [DateTime]::UtcNow
 $start = $now.AddMinutes(-2).ToString('o'); $end = $now.AddMinutes(2).ToString('o')
-Invoke-AwsCli @('cloudwatch','put-metric-data','--namespace','CanaryDemo/PaymentAPI',
+Invoke-AwsCli @('cloudwatch','put-metric-data','--namespace','CanaryDemo/LibraryAPI',
     '--metric-name','RequestCount','--value','1','--dimensions','Version=smoke-v1') | Out-Null
 Start-Sleep -Seconds 1
-$stats = Invoke-AwsCli @('cloudwatch','get-metric-statistics','--namespace','CanaryDemo/PaymentAPI',
+$stats = Invoke-AwsCli @('cloudwatch','get-metric-statistics','--namespace','CanaryDemo/LibraryAPI',
     '--metric-name','RequestCount','--dimensions','Name=Version,Value=smoke-v1',
     '--statistics','Sum','--period','60','--start-time',$start,'--end-time',$end) | ConvertFrom-Json
 if (-not $stats.Datapoints) { throw 'CloudWatch GetMetricStatistics returned no datapoint after PutMetricData' }

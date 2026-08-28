@@ -1,4 +1,4 @@
-package com.example.payment;
+package com.example.library;
 
 import java.time.Duration;
 import java.util.Map;
@@ -10,32 +10,32 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class PaymentService {
-    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+public class LibraryService {
+    private static final Logger log = LoggerFactory.getLogger(LibraryService.class);
     private final String appVersion;
     private final AtomicInteger requestCounter = new AtomicInteger();
     private volatile FaultMode faultMode;
 
-    public PaymentService(@Value("${app.version:payment-local}") String appVersion,
+    public LibraryService(@Value("${app.version:library-local}") String appVersion,
                           @Value("${app.fault-mode:HEALTHY}") String initialFaultMode) {
         this.appVersion = appVersion;
         this.faultMode = isStable() ? FaultMode.HEALTHY : FaultMode.parse(initialFaultMode);
     }
 
-    public Map<String, Object> authorize(String orderId, double amount) {
+    public Map<String, Object> borrow(String bookId, String memberId) {
         FaultMode mode = faultMode;
         if (mode == FaultMode.SLOW) {
             sleep(Duration.ofMillis(700));
         }
         int requestNumber = requestCounter.incrementAndGet();
         if (mode == FaultMode.ERROR && requestNumber % 3 == 0) {
-            log.info("payment_result version={} faultMode={} requestNumber={} status=500",
+            log.info("library_result version={} faultMode={} requestNumber={} status=500",
                     appVersion, mode, requestNumber);
-            throw new PaymentFailureException(orderId, "DETERMINISTIC_CANDIDATE_ERROR");
+            throw new LibraryFailureException(bookId, memberId, "DETERMINISTIC_CANDIDATE_ERROR");
         }
-        log.info("payment_result version={} faultMode={} requestNumber={} status=200",
+        log.info("library_result version={} faultMode={} requestNumber={} status=200",
                 appVersion, mode, requestNumber);
-        return Map.of("orderId", orderId, "status", "APPROVED", "servedBy", appVersion);
+        return Map.of("bookId", bookId, "memberId", memberId, "status", "BORROWED", "servedBy", appVersion);
     }
 
     public FaultMode setFaultMode(FaultMode requestedMode) {
@@ -64,22 +64,28 @@ public class PaymentService {
             Thread.sleep(duration.toMillis());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("payment request interrupted");
+            throw new IllegalStateException("library request interrupted");
         }
     }
 
-    public static class PaymentFailureException extends RuntimeException {
-        private final String orderId;
+    public static class LibraryFailureException extends RuntimeException {
+        private final String bookId;
+        private final String memberId;
         private final String reason;
 
-        public PaymentFailureException(String orderId, String reason) {
+        public LibraryFailureException(String bookId, String memberId, String reason) {
             super(reason);
-            this.orderId = orderId;
+            this.bookId = bookId;
+            this.memberId = memberId;
             this.reason = reason;
         }
 
-        public String orderId() {
-            return orderId;
+        public String bookId() {
+            return bookId;
+        }
+
+        public String memberId() {
+            return memberId;
         }
 
         public String reason() {

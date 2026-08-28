@@ -1,6 +1,6 @@
 package com.example.canary.routing;
 
-import com.example.canary.model.PaymentRequest;
+import com.example.canary.model.BookBorrowRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,17 +10,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/payments")
-public class PaymentGatewayController {
-    private final PaymentGatewayService gateway;
+@RequestMapping("/api/books")
+public class LibraryGatewayController {
+    private final LibraryGatewayService gateway;
 
-    public PaymentGatewayController(PaymentGatewayService gateway) {
+    public LibraryGatewayController(LibraryGatewayService gateway) {
         this.gateway = gateway;
     }
 
-    @PostMapping("/authorize")
-    public ResponseEntity<byte[]> authorize(@Valid @RequestBody PaymentRequest request,
+    @PostMapping("/borrow")
+    public ResponseEntity<byte[]> borrow(@Valid @RequestBody BookBorrowRequest request,
                                             @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
-        return gateway.authorize(request, sessionId);
+        return gateway.borrow(request, sessionId);
     }
 }

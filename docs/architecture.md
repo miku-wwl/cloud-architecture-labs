@@ -4,7 +4,7 @@
 
 | 组件 | 职责 |
 |---|---|
-| `payment-service`（Spring Boot） | 可复用的支付 API 应用，可配置为 `stable-v1` 或 `candidate-v2` |
+| `library-service`（Spring Boot） | 可复用的图书借阅 API，可配置为 `stable-v1` 或 `candidate-v2` |
 | 控制平面（Spring Boot） | 薄网关、发布 API 和 CloudWatch 指标发布 |
 | DynamoDB | 保存路由状态和发布状态 |
 | CloudWatch | 发布健康度的主要证据：`RequestCount`、`ErrorCount`、`LatencyMs` |

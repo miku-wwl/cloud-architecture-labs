@@ -7,6 +7,7 @@ data "archive_file" "lambda" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/${each.key}"
   output_path = "${path.module}/build/${each.key}.zip"
+  excludes    = ["__pycache__", "*.pyc"]
 }
 
 resource "aws_lambda_function" "control" {
@@ -30,7 +31,7 @@ resource "aws_lambda_function" "control" {
       CANDIDATE_VERSION         = var.candidate_version
       ROUTING_TABLE             = aws_dynamodb_table.routing.name
       RELEASE_TABLE             = aws_dynamodb_table.releases.name
-      CLOUDWATCH_NAMESPACE      = "CanaryDemo/PaymentAPI"
+      CLOUDWATCH_NAMESPACE      = "CanaryDemo/LibraryAPI"
       EVALUATION_WINDOW_SECONDS = tostring(var.evaluation_window_seconds)
       MINIMUM_REQUEST_COUNT     = tostring(var.minimum_request_count)
       MAX_ERROR_RATE            = tostring(var.max_error_rate)

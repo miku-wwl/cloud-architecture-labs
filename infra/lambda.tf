@@ -1,5 +1,5 @@
 locals {
-  lambda_names = toset(["initialize_release", "set_weight", "evaluate_health", "finalize_release"])
+  lambda_names = toset(["set_weight", "evaluate_health", "finalize_release"])
 }
 
 data "archive_file" "lambda" {
@@ -30,8 +30,6 @@ resource "aws_lambda_function" "control" {
       CANDIDATE_VERSION         = var.candidate_version
       ROUTING_TABLE             = aws_dynamodb_table.routing.name
       RELEASE_TABLE             = aws_dynamodb_table.releases.name
-      METRICS_TABLE             = aws_dynamodb_table.metrics.name
-      EVENT_BUS_NAME            = aws_cloudwatch_event_bus.canary.name
       CLOUDWATCH_NAMESPACE      = "CanaryDemo/PaymentAPI"
       EVALUATION_WINDOW_SECONDS = tostring(var.evaluation_window_seconds)
       MINIMUM_REQUEST_COUNT     = tostring(var.minimum_request_count)

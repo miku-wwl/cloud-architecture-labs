@@ -1,43 +1,8 @@
 locals {
   canary_workflow_definition = jsonencode({
-    Comment = "Metric-gated canary release workflow"
-    StartAt = "InitializeRelease"
+    Comment = "Canary release: set weight, wait, evaluate, then promote or roll back"
+    StartAt = "SetCanary5"
     States = {
-      InitializeRelease = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = aws_lambda_function.control["initialize_release"].arn
-          Payload = {
-            "releaseId.$"   = "$.releaseId"
-            "serviceName.$" = "$.serviceName"
-            "executionId.$" = "$$.Execution.Id"
-          }
-        }
-        ResultSelector = {
-          "accepted.$"  = "$.Payload.accepted"
-          "releaseId.$" = "$.Payload.releaseId"
-        }
-        ResultPath = "$.initialization"
-        Retry = [{
-          ErrorEquals     = ["States.TaskFailed"]
-          IntervalSeconds = 2
-          MaxAttempts     = 2
-          BackoffRate     = 2
-        }]
-        Next = "ReleaseClaimed?"
-      }
-
-      "ReleaseClaimed?" = {
-        Type = "Choice"
-        Choices = [{
-          Variable      = "$.initialization.accepted"
-          BooleanEquals = true
-          Next          = "SetCanary5"
-        }]
-        Default = "DuplicateEventIgnored"
-      }
-
       SetCanary5 = {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
@@ -75,8 +40,6 @@ locals {
         Parameters = {
           FunctionName = aws_lambda_function.control["evaluate_health"].arn
           Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
             "candidateVersion.$" = "$.candidateVersion"
             "stageStartMs.$"     = "$.stage5.stageStartedAtMs"
             "windowSeconds.$"    = "$.evaluationWindowSeconds"
@@ -148,8 +111,6 @@ locals {
         Parameters = {
           FunctionName = aws_lambda_function.control["evaluate_health"].arn
           Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
             "candidateVersion.$" = "$.candidateVersion"
             "stageStartMs.$"     = "$.stage25.stageStartedAtMs"
             "windowSeconds.$"    = "$.evaluationWindowSeconds"
@@ -221,8 +182,6 @@ locals {
         Parameters = {
           FunctionName = aws_lambda_function.control["evaluate_health"].arn
           Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
             "candidateVersion.$" = "$.candidateVersion"
             "stageStartMs.$"     = "$.stage50.stageStartedAtMs"
             "windowSeconds.$"    = "$.evaluationWindowSeconds"
@@ -258,44 +217,27 @@ locals {
       }
 
       RollbackFrom5 = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = aws_lambda_function.control["set_weight"].arn
-          Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
-            "stableVersion.$"    = "$.stableVersion"
-            "candidateVersion.$" = "$.candidateVersion"
-            percentage           = 0
-            stage                = "ROLLING_BACK"
-            "failureReason.$"    = "$.evaluation5.failureCode"
-          }
-        }
-        ResultPath = null
-        Next       = "FinalizeRolledBack5"
+        Type       = "Pass"
+        Parameters = { "reason.$" = "$.evaluation5.failureCode" }
+        ResultPath = "$.rollback"
+        Next       = "SetCanary0"
       }
 
       RollbackFrom25 = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = aws_lambda_function.control["set_weight"].arn
-          Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
-            "stableVersion.$"    = "$.stableVersion"
-            "candidateVersion.$" = "$.candidateVersion"
-            percentage           = 0
-            stage                = "ROLLING_BACK"
-            "failureReason.$"    = "$.evaluation25.failureCode"
-          }
-        }
-        ResultPath = null
-        Next       = "FinalizeRolledBack25"
+        Type       = "Pass"
+        Parameters = { "reason.$" = "$.evaluation25.failureCode" }
+        ResultPath = "$.rollback"
+        Next       = "SetCanary0"
       }
 
       RollbackFrom50 = {
+        Type       = "Pass"
+        Parameters = { "reason.$" = "$.evaluation50.failureCode" }
+        ResultPath = "$.rollback"
+        Next       = "SetCanary0"
+      }
+
+      SetCanary0 = {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
         Parameters = {
@@ -307,11 +249,17 @@ locals {
             "candidateVersion.$" = "$.candidateVersion"
             percentage           = 0
             stage                = "ROLLING_BACK"
-            "failureReason.$"    = "$.evaluation50.failureCode"
+            "failureReason.$"    = "$.rollback.reason"
           }
         }
         ResultPath = null
-        Next       = "FinalizeRolledBack50"
+        Retry = [{
+          ErrorEquals     = ["States.TaskFailed"]
+          IntervalSeconds = 2
+          MaxAttempts     = 2
+          BackoffRate     = 2
+        }]
+        Next = "FinalizeRolledBack"
       }
 
       FinalizePromoted = {
@@ -337,7 +285,7 @@ locals {
         Next = "ReleasePromoted"
       }
 
-      FinalizeRolledBack5 = {
+      FinalizeRolledBack = {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
         Parameters = {
@@ -348,52 +296,21 @@ locals {
             "stableVersion.$"    = "$.stableVersion"
             "candidateVersion.$" = "$.candidateVersion"
             decision             = "ROLLED_BACK"
-            "failureReason.$"    = "$.evaluation5.failureCode"
+            "failureReason.$"    = "$.rollback.reason"
           }
         }
         ResultPath = null
-        Next       = "ReleaseRolledBack"
+        Retry = [{
+          ErrorEquals     = ["States.TaskFailed"]
+          IntervalSeconds = 2
+          MaxAttempts     = 2
+          BackoffRate     = 2
+        }]
+        Next = "ReleaseRolledBack"
       }
 
-      FinalizeRolledBack25 = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = aws_lambda_function.control["finalize_release"].arn
-          Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
-            "stableVersion.$"    = "$.stableVersion"
-            "candidateVersion.$" = "$.candidateVersion"
-            decision             = "ROLLED_BACK"
-            "failureReason.$"    = "$.evaluation25.failureCode"
-          }
-        }
-        ResultPath = null
-        Next       = "ReleaseRolledBack"
-      }
-
-      FinalizeRolledBack50 = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = aws_lambda_function.control["finalize_release"].arn
-          Payload = {
-            "releaseId.$"        = "$.releaseId"
-            "serviceName.$"      = "$.serviceName"
-            "stableVersion.$"    = "$.stableVersion"
-            "candidateVersion.$" = "$.candidateVersion"
-            decision             = "ROLLED_BACK"
-            "failureReason.$"    = "$.evaluation50.failureCode"
-          }
-        }
-        ResultPath = null
-        Next       = "ReleaseRolledBack"
-      }
-
-      ReleasePromoted       = { Type = "Succeed" }
-      ReleaseRolledBack     = { Type = "Succeed" }
-      DuplicateEventIgnored = { Type = "Succeed" }
+      ReleasePromoted   = { Type = "Succeed" }
+      ReleaseRolledBack = { Type = "Succeed" }
     }
   })
 }

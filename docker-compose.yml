@@ -38,9 +38,6 @@ services:
       STABLE_URL: http://payment-stable:8081
       CANDIDATE_URL: http://payment-candidate:8082
       EVALUATION_WINDOW_SECONDS: 10
-      MINIMUM_REQUEST_COUNT: 10
-      MAX_ERROR_RATE: 0.05
-      MAX_LATENCY_MS: 300
     ports:
       - "8080:8080"
     depends_on:

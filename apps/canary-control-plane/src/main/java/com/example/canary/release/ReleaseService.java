@@ -9,7 +9,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.context.event.EventListener;
@@ -23,18 +22,14 @@ import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
 
 @Service
 public class ReleaseService {
-    private static final Map<String, String> SCENARIOS = Map.of(
-            "HEALTHY", "HEALTHY", "ERROR", "ERROR", "SLOW", "SLOW");
     private final DynamoStore store;
-    private final PaymentBackendClient backend;
     private final EventBridgeClient events;
     private final CanaryProperties properties;
     private final ObjectMapper objectMapper;
 
-    public ReleaseService(DynamoStore store, PaymentBackendClient backend, EventBridgeClient events,
+    public ReleaseService(DynamoStore store, EventBridgeClient events,
                           CanaryProperties properties, ObjectMapper objectMapper) {
         this.store = store;
-        this.backend = backend;
         this.events = events;
         this.properties = properties;
         this.objectMapper = objectMapper;
@@ -46,32 +41,23 @@ public class ReleaseService {
     }
 
     public ReleaseRecord start(ReleaseRequest request) {
-        String scenario = request.scenario().trim().toUpperCase();
-        if (!SCENARIOS.containsKey(scenario)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "scenario must be HEALTHY, ERROR, or SLOW");
-        }
         if (!properties.candidateVersion.equals(request.candidateVersion())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "candidateVersion must be " + properties.candidateVersion);
         }
 
         String releaseId = "rel-" + UUID.randomUUID();
-        if (!store.tryAcquireRelease(releaseId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "an active release already exists for payment-api");
-        }
         Instant now = Instant.now();
         ReleaseRecord created = new ReleaseRecord(releaseId, properties.serviceName, properties.stableVersion,
                 properties.candidateVersion, "CREATED", "CREATED", 0, now.toString(), now.toString(), "", "");
         try {
-            backend.setCandidateFaultMode(SCENARIOS.get(scenario));
             store.saveCreatedRelease(created);
-            Map<String, Object> detail = new LinkedHashMap<>();
+            LinkedHashMap<String, Object> detail = new LinkedHashMap<>();
             detail.put("releaseId", releaseId);
             detail.put("serviceName", properties.serviceName);
             detail.put("stableVersion", properties.stableVersion);
             detail.put("candidateVersion", properties.candidateVersion);
             detail.put("evaluationWindowSeconds", properties.evaluationWindowSeconds);
-            detail.put("scenario", scenario);
             PutEventsRequestEntry entry = PutEventsRequestEntry.builder()
                     .eventBusName(properties.eventBusName)
                     .source("demo.canary")
@@ -97,7 +83,6 @@ public class ReleaseService {
     }
 
     public void reset() {
-        backend.setCandidateFaultMode("HEALTHY");
         store.resetRoutingState();
     }
 

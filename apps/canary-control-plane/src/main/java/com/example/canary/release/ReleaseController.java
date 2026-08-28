@@ -2,6 +2,7 @@ package com.example.canary.release;
 
 import com.example.canary.model.ReleaseRecord;
 import com.example.canary.model.ReleaseRequest;
+import com.example.canary.model.RoutingState;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -29,5 +30,10 @@ public class ReleaseController {
     @GetMapping("/{releaseId}")
     public ReleaseRecord get(@PathVariable String releaseId) {
         return releases.get(releaseId);
+    }
+
+    @GetMapping("/routing")
+    public RoutingState routing() {
+        return releases.routing();
     }
 }

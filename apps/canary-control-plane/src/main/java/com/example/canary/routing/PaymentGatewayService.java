@@ -4,6 +4,7 @@ import com.example.canary.CanaryProperties;
 import com.example.canary.model.PaymentRequest;
 import com.example.canary.model.RoutingState;
 import com.example.canary.observability.MetricsPublisher;
+import com.example.canary.store.DynamoStore;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
@@ -21,16 +22,16 @@ import org.springframework.web.client.RestClientException;
 @Service
 public class PaymentGatewayService {
     private static final Logger log = LoggerFactory.getLogger(PaymentGatewayService.class);
-    private final RoutingCache routingCache;
+    private final DynamoStore store;
     private final DeterministicRouter router;
     private final MetricsPublisher metrics;
     private final CanaryProperties properties;
     private final RestClient stableClient;
     private final RestClient candidateClient;
 
-    public PaymentGatewayService(RoutingCache routingCache, DeterministicRouter router, MetricsPublisher metrics,
+    public PaymentGatewayService(DynamoStore store, DeterministicRouter router, MetricsPublisher metrics,
                                  CanaryProperties properties, RestClient.Builder restClientBuilder) {
-        this.routingCache = routingCache;
+        this.store = store;
         this.router = router;
         this.metrics = metrics;
         this.properties = properties;
@@ -41,7 +42,7 @@ public class PaymentGatewayService {
     public ResponseEntity<byte[]> authorize(PaymentRequest payment, String requestedSessionId) {
         String sessionId = requestedSessionId == null || requestedSessionId.isBlank()
                 ? "anonymous-" + UUID.randomUUID() : requestedSessionId;
-        RoutingState state = routingCache.get();
+        RoutingState state = store.getRoutingState();
         String servedBy = router.choose(sessionId, state.stableVersion(), state.candidateVersion(), state.candidatePercentage());
         RestClient client = servedBy.equals(state.candidateVersion()) ? candidateClient : stableClient;
         long started = System.nanoTime();

@@ -13,7 +13,3 @@ output "routing_table_name" {
 output "release_table_name" {
   value = aws_dynamodb_table.releases.name
 }
-
-output "metrics_table_name" {
-  value = aws_dynamodb_table.metrics.name
-}

@@ -17,20 +17,14 @@ resource "aws_iam_role" "lambda" {
 data "aws_iam_policy_document" "lambda_policy" {
   statement {
     effect    = "Allow"
-    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    resources = [aws_dynamodb_table.routing.arn, aws_dynamodb_table.releases.arn, aws_dynamodb_table.metrics.arn]
+    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+    resources = [aws_dynamodb_table.routing.arn, aws_dynamodb_table.releases.arn]
   }
 
   statement {
     effect    = "Allow"
     actions   = ["cloudwatch:GetMetricStatistics", "cloudwatch:GetMetricData", "cloudwatch:ListMetrics"]
     resources = ["*"]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["events:PutEvents"]
-    resources = [aws_cloudwatch_event_bus.canary.arn]
   }
 
   statement {

@@ -5,8 +5,6 @@ spring:
     name: canary-control-plane
   jackson:
     default-property-inclusion: non_null
-  thymeleaf:
-    cache: false
 management:
   endpoints:
     web:
@@ -18,13 +16,9 @@ app:
   candidate-version: ${CANDIDATE_VERSION:candidate-v2}
   routing-table: ${ROUTING_TABLE:canary-routing-state}
   release-table: ${RELEASE_TABLE:canary-releases}
-  metrics-table: ${METRICS_TABLE:canary-metrics-window}
   event-bus-name: ${EVENT_BUS_NAME:canary-release-bus}
   cloudwatch-namespace: ${CLOUDWATCH_NAMESPACE:CanaryDemo/PaymentAPI}
   evaluation-window-seconds: ${EVALUATION_WINDOW_SECONDS:10}
-  minimum-request-count: ${MINIMUM_REQUEST_COUNT:10}
-  max-error-rate: ${MAX_ERROR_RATE:0.05}
-  max-latency-ms: ${MAX_LATENCY_MS:300}
   stable-url: ${STABLE_URL:http://localhost:8081}
   candidate-url: ${CANDIDATE_URL:http://localhost:8082}
 aws:

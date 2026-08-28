@@ -8,7 +8,7 @@
 
 ## 架构
 
-客户端请求进入 Spring Boot 控制平面。控制平面从 DynamoDB 读取路由状态，并使用 1 秒缓存；随后按照 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理请求结束后，控制平面向 CloudWatch `CanaryDemo/PaymentAPI` 写入 `RequestCount`、`ErrorCount` 和 `LatencyMs`，同时把同一条证据写入 DynamoDB 指标窗口，供 LocalStack 的 CloudWatch 统计异常时使用显式的确定性回退。
+客户端请求进入 Spring Boot 控制平面。控制平面从 DynamoDB 读取路由状态，按照 `SHA-256(X-Session-Id) % 100` 选择 stable 或 candidate。代理请求结束后，控制平面向 CloudWatch `CanaryDemo/PaymentAPI` 写入 `RequestCount`、`ErrorCount` 和 `LatencyMs`。这里的 Spring Boot 只负责提供被测业务的薄入口，发布编排由 AWS 服务完成。
 
 发布 API 写入发布状态后，发布 EventBridge 事件 `CanaryReleaseRequested`。EventBridge 规则将事件的 `detail` 交给 Standard 类型的 Step Functions；工作流调用 Python Lambda 设置流量权重、等待指标窗口、执行健康评估，再由 Choice 决定进入下一阶段还是回滚。
 
@@ -25,8 +25,8 @@
 
 ```text
 apps/payment-service/          可复用的 stable/candidate Spring Boot 应用
-apps/canary-control-plane/     网关、发布 API、仪表盘、指标和流量生成器
-lambda/                        initialize、set_weight、evaluate_health、finalize
+apps/canary-control-plane/     薄网关、发布 API 和 CloudWatch 指标上报
+lambda/                        set_weight、evaluate_health、finalize_release
 infra/                         Terraform 资源和状态机定义
 scripts/                       Windows PowerShell 与 Shell 冒烟/演示脚本
 docs/                          架构、算法、故障场景和 ADR
@@ -36,7 +36,7 @@ Makefile                       可重复执行的本地命令
 
 ## 快速开始
 
-前置条件：Java 21、Maven、Terraform、Docker Desktop 和 AWS CLI。下面使用的凭据均为本地模拟值：
+前置条件：Java 21、Maven、Terraform、AWS CLI，以及已经运行在 `http://localhost:4566` 的 LocalStack。只有使用可选的应用容器拓扑时才需要 Docker Desktop。下面使用的凭据均为本地模拟值：
 
 ```powershell
 Invoke-RestMethod http://localhost:4566/_localstack/health | ConvertTo-Json
@@ -53,11 +53,11 @@ make up
 make smoke
 ```
 
-打开 <http://localhost:8080>。仪表盘中提供流量和发布按钮。stable 服务运行在 8081 端口，candidate 服务运行在 8082 端口。`docker-compose.yml` 是可选的应用容器拓扑，前提是你已经将独立运行的 LocalStack 暴露在主机的 4566 端口；本项目不会启动或停止 LocalStack 容器。
+控制平面运行在 8080 端口，stable 服务运行在 8081 端口，candidate 服务运行在 8082 端口。可以使用 `scripts/demo.ps1` 启动演示流量并发起发布。`docker-compose.yml` 只是可选的应用容器拓扑，前提是你已经将独立运行的 LocalStack 暴露在主机的 4566 端口；本项目不会启动或停止 LocalStack 容器。
 
 ## 工作原理
 
-网关对同一个会话的每次请求都使用同一个哈希桶。`0%` 和 `100%` 是明确的快速路径；中间比例使用确定性哈希桶。当前发布阈值通过环境变量配置：candidate 至少收到 10 个请求，错误率不超过 5%，平均延迟不超过 300 ms。
+网关对同一个会话的每次请求都使用同一个哈希桶。`0%` 和 `100%` 是明确的快速路径；中间比例使用确定性哈希桶。当前发布阈值通过 Lambda 环境变量配置：candidate 至少收到 10 个请求，错误率不超过 5%，平均延迟不超过 300 ms。
 
 candidate 的故障模式只能通过演示用内部接口修改：`PUT /internal/fault-mode/HEALTHY`、`SLOW` 或 `ERROR`。`ERROR` 模式下 candidate 每 3 个请求返回一次 HTTP 500；`SLOW` 模式额外增加 700 ms 延迟。Stable 始终保持健康。
 
@@ -70,7 +70,7 @@ candidate 的故障模式只能通过演示用内部接口修改：`PUT /interna
 # 或：make demo-healthy
 ```
 
-脚本会启动有上限的演示流量，通过公共 API 发起发布，轮询发布记录，并期望最终状态为 `PROMOTED`、candidate 流量为 `100%`。
+脚本会通过独立的 PowerShell 流量生成器启动有上限的演示流量，通过公共 API 发起发布，轮询发布记录，并期望最终状态为 `PROMOTED`、candidate 流量为 `100%`。
 
 ## 回滚演示
 
@@ -92,7 +92,7 @@ docker compose config
 make smoke
 ```
 
-Java 测试覆盖确定性故障注入和 stable 安全性。冒烟脚本会验证 LocalStack 资源、服务健康状态，以及真实的 `PutMetricData -> GetMetricStatistics` 往返调用。Docker 可用时，演示脚本还会验证事件驱动的端到端流程。
+Java 测试覆盖确定性故障注入和 stable 安全性。冒烟脚本会验证 LocalStack 资源、服务健康状态，以及真实的 `PutMetricData -> GetMetricStatistics` 往返调用。演示脚本会验证 EventBridge → Step Functions → Lambda 的端到端流程。
 
 ## 为什么选择 EventBridge
 
@@ -104,7 +104,7 @@ Step Functions 负责长时间运行的编排，包括等待窗口、Lambda 活�
 
 ## 为什么使用 Lambda
 
-每个 Lambda 都是一个职责单一、契约明确的确定性活动，分别负责抢占发布、设置权重、评估健康证据或完成最终决策。
+每个 Lambda 都是一个职责单一、契约明确的确定性活动，分别负责设置流量权重、评估 CloudWatch 健康指标或完成最终决策。
 
 ## 为什么选择 CloudWatch
 
@@ -116,7 +116,7 @@ CloudWatch 是发布健康度的主要证据来源。每个代理请求都会带
 
 ## LocalStack 限制
 
-应用始终调用 LocalStack 端点，不会回退到真实 AWS。不同版本的 LocalStack 在 CloudWatch 统计聚合、Lambda Docker 执行或 IAM 强制执行方面可能存在差异。主路径仍然是 CloudWatch 的 `PutMetricData`，评估器首先调用 `GetMetricStatistics`；如果调用出错或没有返回 `RequestCount` 数据点，评估器会输出 `cloudwatch_evaluation_fallback` 日志，并从 `canary-metrics-window` 读取精确的请求证据。这种行为是显式的，并已记录在 [docs/localstack-limitations.md](docs/localstack-limitations.md) 中，不是静默绕过 CloudWatch。
+应用始终调用 LocalStack 端点，不会回退到真实 AWS。不同版本的 LocalStack 在 CloudWatch 统计聚合、Lambda Docker 执行或 IAM 强制执行方面可能存在差异。发布评估只使用 CloudWatch 的 `PutMetricData` 和 `GetMetricStatistics`；如果窗口内没有 `RequestCount` 数据点，评估结果为 `INSUFFICIENT_REQUESTS`，不会切换到第二套指标存储。这些边界已记录在 [docs/localstack-limitations.md](docs/localstack-limitations.md) 中。
 
 ## 重置与清理
 

@@ -1,7 +1,6 @@
 package com.example.canary.observability;
 
 import com.example.canary.CanaryProperties;
-import com.example.canary.store.MetricsWindowStore;
 import java.time.Instant;
 import java.util.List;
 
@@ -18,12 +17,10 @@ import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 public class MetricsPublisher {
     private static final Logger log = LoggerFactory.getLogger(MetricsPublisher.class);
     private final CloudWatchClient cloudWatch;
-    private final MetricsWindowStore metricsWindow;
     private final CanaryProperties properties;
 
-    public MetricsPublisher(CloudWatchClient cloudWatch, MetricsWindowStore metricsWindow, CanaryProperties properties) {
+    public MetricsPublisher(CloudWatchClient cloudWatch, CanaryProperties properties) {
         this.cloudWatch = cloudWatch;
-        this.metricsWindow = metricsWindow;
         this.properties = properties;
     }
 
@@ -40,10 +37,8 @@ public class MetricsPublisher {
                             datum("LatencyMs", latencyMs, StandardUnit.MILLISECONDS, versionDimension, timestamp)))
                     .build());
         } catch (RuntimeException ex) {
-            // The deterministic DDB window is retained so evaluation never silently loses evidence.
             log.warn("cloudwatch_metric_publish_failed version={} error={}", version, ex.getMessage());
         }
-        metricsWindow.record(version, httpStatus, latencyMs, timestamp);
     }
 
     private static MetricDatum datum(String name, double value, StandardUnit unit, Dimension dimension, Instant timestamp) {

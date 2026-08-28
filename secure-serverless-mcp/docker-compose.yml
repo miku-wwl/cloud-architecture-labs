@@ -1,0 +1,19 @@
+name: secure-serverless-mcp
+
+services:
+  localstack:
+    image: ${LOCALSTACK_IMAGE:-localstack/localstack-pro:latest}
+    container_name: secure-serverless-mcp-localstack
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    environment:
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:-}
+      - AWS_DEFAULT_REGION=us-east-1
+      - DEBUG=${DEBUG:-0}
+      - PERSISTENCE=${PERSISTENCE:-0}
+    volumes:
+      - secure-serverless-mcp-localstack:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  secure-serverless-mcp-localstack:

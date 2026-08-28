@@ -1,0 +1,31 @@
+server:
+  port: ${SERVER_PORT:8090}
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: secure-serverless-mcp
+
+mcp:
+  aws-endpoint-url: ${AWS_ENDPOINT_URL:http://localhost:4566}
+  aws-region: ${AWS_REGION:us-east-1}
+  aws-access-key-id: ${AWS_ACCESS_KEY_ID:test}
+  aws-secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
+  user-data-table: ${USER_DATA_TABLE:mcp-user-data}
+  local-only: ${LOCAL_ONLY:true}
+  allow-debug-principal: ${ALLOW_DEBUG_PRINCIPAL:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    com.example.securemcp: INFO

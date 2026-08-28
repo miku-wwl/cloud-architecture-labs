@@ -1,0 +1,13 @@
+target/
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/*.tfstate
+infra/*.tfstate.*
+infra/build/*.zip
+.idea/
+*.iml
+__pycache__/
+*.pyc
+.env
+.run/
+logs/

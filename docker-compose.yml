@@ -1,0 +1,56 @@
+services:
+  payment-stable:
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    environment:
+      SERVER_PORT: 8081
+      APP_VERSION: stable-v1
+      FAULT_MODE: HEALTHY
+    ports:
+      - "8081:8081"
+    networks:
+      - canary-network
+
+  payment-candidate:
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    environment:
+      SERVER_PORT: 8082
+      APP_VERSION: candidate-v2
+      FAULT_MODE: HEALTHY
+    ports:
+      - "8082:8082"
+    networks:
+      - canary-network
+
+  canary-control-plane:
+    build:
+      context: .
+      dockerfile: apps/canary-control-plane/Dockerfile
+    environment:
+      SERVER_PORT: 8080
+      AWS_ENDPOINT_URL: http://host.docker.internal:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      STABLE_URL: http://payment-stable:8081
+      CANDIDATE_URL: http://payment-candidate:8082
+      EVALUATION_WINDOW_SECONDS: 10
+      MINIMUM_REQUEST_COUNT: 10
+      MAX_ERROR_RATE: 0.05
+      MAX_LATENCY_MS: 300
+    ports:
+      - "8080:8080"
+    depends_on:
+      payment-stable:
+        condition: service_started
+      payment-candidate:
+        condition: service_started
+    networks:
+      - canary-network
+
+networks:
+  canary-network:
+    name: canary-network

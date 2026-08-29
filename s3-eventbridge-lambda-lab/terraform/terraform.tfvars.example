@@ -1,0 +1,3 @@
+localstack_endpoint = "http://localhost:4566"
+lambda_endpoint     = "http://host.docker.internal:4566"
+bucket_name         = "event-driven-orders"

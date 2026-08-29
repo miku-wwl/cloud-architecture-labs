@@ -9,6 +9,7 @@
 | [Canary Release Orchestrator](canary-release-orchestrator/README.md) | ✅ 已完成 | EventBridge → Step Functions → Lambda → CloudWatch | 金丝雀发布、渐进式交付、指标门控晋级、自动回滚 |
 | [Secure Serverless MCP](secure-serverless-mcp/README.md) | ✅ 已完成 | Cognito → API Gateway → Lambda → MCP → DynamoDB | OAuth、JWT、远程 MCP、Streamable HTTP、身份传播 |
 | [Bedrock Resilience Observability](bedrock-resilience-observability/README.md) | ✅ 已完成 | Spring Boot → LocalStack Bedrock；OpenTelemetry → X-Ray / CloudWatch | Standard Retry、退避与抖动、模型级可观测性、无真实凭据 E2E |
+| [S3 EventBridge Lambda Lab](s3-eventbridge-lambda-lab/README.md) | ✅ 已完成 | S3 → EventBridge → Java Lambda → S3 | 事件过滤、Lambda 事件解析、S3 结果写回、LocalStack E2E |
 
 ## 仓库结构
 
@@ -16,7 +17,8 @@
 cloud-architecture-labs/
 ├── canary-release-orchestrator/  金丝雀发布编排实验
 ├── secure-serverless-mcp/        安全远程 MCP 实验
-└── bedrock-resilience-observability/  Bedrock 弹性与可观测性实验
+├── bedrock-resilience-observability/  Bedrock 弹性与可观测性实验
+└── s3-eventbridge-lambda-lab/    S3 → EventBridge → Java Lambda 学习实验
 ```
 
 每个项目都有自己的 `README.md`、源码、基础设施、脚本和项目级文档。根目录只负责列出项目，不承载某一个实验的 `apps`、`infra` 或 `docs`。

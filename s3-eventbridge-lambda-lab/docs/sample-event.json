@@ -1,0 +1,27 @@
+{
+  "version": "0",
+  "id": "example-event-id",
+  "detail-type": "Object Created",
+  "source": "aws.s3",
+  "account": "000000000000",
+  "time": "2026-08-30T00:00:00Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:s3:::event-driven-orders"
+  ],
+  "detail": {
+    "version": "0",
+    "bucket": {
+      "name": "event-driven-orders"
+    },
+    "object": {
+      "key": "input/order-001.json",
+      "size": 86,
+      "etag": "example-etag"
+    },
+    "request-id": "example-request-id",
+    "requester": "000000000000",
+    "source-ip-address": "127.0.0.1",
+    "reason": "PutObject"
+  }
+}

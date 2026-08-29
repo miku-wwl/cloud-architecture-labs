@@ -1,0 +1,6 @@
+{
+  "orderId": "ORD-001",
+  "customerId": "CUS-001",
+  "amount": 125.50,
+  "currency": "NZD"
+}

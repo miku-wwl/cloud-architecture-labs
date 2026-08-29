@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: bedrock-resilience-observability
+  profiles:
+    default: local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+server:
+  shutdown: graceful
+
+lab:
+  bedrock:
+    region: ${AWS_REGION:us-east-1}
+    model-id: ${BEDROCK_MODEL_ID:amazon.nova-lite-v1:0}
+    allowed-model-ids: ${BEDROCK_ALLOWED_MODEL_IDS:amazon.nova-lite-v1:0}
+    max-attempts: 3
+    api-call-timeout: 30s
+    api-call-attempt-timeout: 10s

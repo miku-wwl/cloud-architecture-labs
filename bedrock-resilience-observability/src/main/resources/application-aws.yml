@@ -1,0 +1,6 @@
+lab:
+  bedrock:
+    endpoint-override:
+    dummy-credentials: false
+    allowed-model-ids:
+      - ${BEDROCK_MODEL_ID:amazon.nova-lite-v1:0}

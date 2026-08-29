@@ -8,13 +8,15 @@
 |---|---|---|---|
 | [Canary Release Orchestrator](canary-release-orchestrator/README.md) | ✅ 已完成 | EventBridge → Step Functions → Lambda → CloudWatch | 金丝雀发布、渐进式交付、指标门控晋级、自动回滚 |
 | [Secure Serverless MCP](secure-serverless-mcp/README.md) | ✅ 已完成 | Cognito → API Gateway → Lambda → MCP → DynamoDB | OAuth、JWT、远程 MCP、Streamable HTTP、身份传播 |
+| [Bedrock Resilience Observability](bedrock-resilience-observability/README.md) | ✅ 已完成 | Spring Boot → LocalStack Bedrock；OpenTelemetry → X-Ray / CloudWatch | Standard Retry、退避与抖动、模型级可观测性、无真实凭据 E2E |
 
 ## 仓库结构
 
 ```text
 cloud-architecture-labs/
 ├── canary-release-orchestrator/  金丝雀发布编排实验
-└── secure-serverless-mcp/        安全远程 MCP 实验
+├── secure-serverless-mcp/        安全远程 MCP 实验
+└── bedrock-resilience-observability/  Bedrock 弹性与可观测性实验
 ```
 
 每个项目都有自己的 `README.md`、源码、基础设施、脚本和项目级文档。根目录只负责列出项目，不承载某一个实验的 `apps`、`infra` 或 `docs`。
@@ -59,6 +61,24 @@ DynamoDB
 
 该项目使用两个 Cognito 客户端模拟不同服务主体，重点学习 OAuth、JWT Authorizer、远程 MCP、身份传播和主体隔离。
 
+### 03. Bedrock Resilience Observability
+
+```text
+Spring Boot
+    ↓
+AWS SDK Standard Retry
+    ↓
+LocalStack Bedrock Converse（本地）/ Amazon Bedrock（AWS）
+
+OpenTelemetry
+    ↓
+ADOT
+    ↓
+X-Ray / CloudWatch
+```
+
+该项目用确定性故障注入观察瞬时错误、限流、带抖动退避和有界重试，并把延迟、重试、token 用量关联到受控的基础模型 ID。
+
 ## 建议学习顺序
 
 1. 阅读项目 README 和架构图。
@@ -74,4 +94,4 @@ DynamoDB
 - 正向路径必须真实穿过文档声称的云服务。
 - 自动化验证同时覆盖正向路径和负向 / 故障场景。
 - 不把令牌、密码或真实个人信息写入代码、样例数据和文档。
-- 所有项目默认使用外部提供的 `http://localhost:4566`，不会创建真实 AWS 资源。
+- 使用 LocalStack 的实验默认连接外部提供的 `http://localhost:4566`；各项目是否需要其他本地模拟器，以项目 README 为准。

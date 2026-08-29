@@ -1,0 +1,11 @@
+lab:
+  localstack:
+    cloudwatch-enabled: ${LOCALSTACK_CLOUDWATCH_ENABLED:true}
+  bedrock:
+    endpoint-override: ${BEDROCK_ENDPOINT:http://localhost:4566}
+    dummy-credentials: ${BEDROCK_DUMMY_CREDENTIALS:true}
+    model-parameter-name: ${BEDROCK_MODEL_PARAMETER_NAME:}
+    model-id: ${BEDROCK_MODEL_ID:ollama.smollm2:360m}
+    allowed-model-ids: ${BEDROCK_ALLOWED_MODEL_IDS:ollama.smollm2:360m}
+    api-call-timeout: 180s
+    api-call-attempt-timeout: 180s

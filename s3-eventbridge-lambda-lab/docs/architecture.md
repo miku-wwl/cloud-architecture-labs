@@ -1,5 +1,7 @@
 # 架构说明
 
+![S3 EventBridge Java Lambda 学习实验架构图](architecture-diagram.png)
+
 ## 目标
 
 这个实验只演示一条最小的 AWS 事件驱动链路：

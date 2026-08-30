@@ -11,6 +11,8 @@ flowchart LR
 
 本项目只使用你本机已经运行的 LocalStack Ultimate：`http://localhost:4566`。项目不会启动 LocalStack，不会创建 Docker 容器，也不会连接真实 AWS。
 
+架构图：[S3 → EventBridge → Java Lambda → S3 架构图](docs/architecture-diagram.png)
+
 ## 学习目标
 
 - S3 如何把 Object Created 事件发送到 EventBridge。
